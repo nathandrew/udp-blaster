@@ -123,8 +123,8 @@ test-video:
 test-audio:
 	@echo "Monitoring audio levels... Press Ctrl+C to stop"
 	@echo "You should see meter movement when there's sound"
-	ffmpeg -f alsa -i $(AUDIO_DEV) -af "volumedetect" -f null - 2>&1 | grep -E "mean_volume|max_volume" || \
-		arecord -D $(AUDIO_DEV) -vvv -f cd /dev/null
+	@echo ""
+	arecord -D $(AUDIO_DEV) -vvv -f cd -c 2 -r 48000 /dev/null 2>&1
 
 # Receive and display UDP stream (run on receiving machine to test)
 test-receive:

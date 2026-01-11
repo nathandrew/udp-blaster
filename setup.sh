@@ -71,7 +71,7 @@ echo "  1) Enter manually"
 echo "  2) This machine (localhost/127.0.0.1)"
 
 # Get local IP to suggest common alternatives
-local_ip=$(hostname -I | awk '{print $1}')
+local_ip=$(ip route get 1.1.1.1 2>/dev/null | grep -oP 'src \K[0-9.]+')
 if [ -n "$local_ip" ]; then
     network_prefix=$(echo "$local_ip" | sed 's/\.[0-9]*$/./')
     echo "  3) Scan network ${network_prefix}0/24 (slow)"
