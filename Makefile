@@ -41,7 +41,7 @@ AUDIO_RATE ?= 48000
 # STREAMING TARGETS
 # ============================================================================
 
-.PHONY: help setup detect find-pi ssh-pi test-video test-audio test-receive stream-udp stream-rtmp stop
+.PHONY: help setup detect find-pi my-ip ssh-pi test-video test-audio test-receive stream-udp stream-rtmp stop
 
 help:
 	@echo "Church Video Streaming Commands"
@@ -50,6 +50,7 @@ help:
 	@echo "Setup & Testing:"
 	@echo "  make setup       - Interactive setup (select devices, save config)"
 	@echo "  make find-pi     - Find Raspberry Pi on network"
+	@echo "  make my-ip       - Show this machine's IP address"
 	@echo "  make ssh-pi      - SSH into the Pi"
 	@echo "  make detect      - Detect video/audio devices"
 	@echo "  make test-video  - Preview video locally (no streaming)"
@@ -88,6 +89,14 @@ find-pi:
 	echo "This may take 10-30 seconds..." && \
 	nmap -sn $(NETWORK_SCAN) 2>/dev/null | grep -B2 -i "raspberry\|$(PI_HOSTNAME)" || \
 	echo "No Raspberry Pi found. Check: 1) Pi is powered on 2) Connected to same network 3) Try different NETWORK_SCAN range")
+
+# Show this machine's IP address
+my-ip:
+	@echo "=== Your IP Address ==="
+	@ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '^127\.' | head -1 || echo "No network connection found"
+	@echo ""
+	@echo "Tell the streaming machine to use:"
+	@echo "  make stream-udp TARGET_IP=$$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '^127\.' | head -1)"
 
 # SSH into the Pi
 ssh-pi:
