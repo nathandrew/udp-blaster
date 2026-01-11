@@ -6,22 +6,20 @@ Stream video/audio from Razer Ripsaw HD to another device running OBS.
 
 ```
 [Camera/Source] → [Ripsaw HD] → [This Linux PC] → [Network] → [OBS PC] → [Zoom]
-                                    ffmpeg           UDP/RTMP     OBS
+                                    ffmpeg           UDP        OBS
 ```
 
 ## Quick Start
 
 ```bash
-# 1. Detect your devices
-make detect
+# 1. Run interactive setup
+make setup
 
-# 2. Edit Makefile with correct device paths (VIDEO_DEV, AUDIO_DEV)
-
-# 3. Test locally
+# 2. Test locally
 make test-video
 
-# 4. Stream to OBS machine
-make stream-udp TARGET_IP=192.168.1.100
+# 3. Stream to OBS machine
+make stream
 ```
 
 ## Technology Overview
@@ -35,17 +33,6 @@ Linux kernel interface for video capture devices. Your Ripsaw HD appears as `/de
 ### ALSA
 Linux audio system. The Ripsaw HD's audio appears as a capture device like `hw:2,0`. FFmpeg captures audio through ALSA.
 
-### UDP vs RTMP
-
-| Feature | UDP | RTMP |
-|---------|-----|------|
-| Latency | ~0.5-1 sec | ~2-5 sec |
-| Reliability | May drop packets | Reliable delivery |
-| Setup | Simple - direct connection | Needs RTMP server |
-| Best for | Same network, low latency | Unstable networks |
-
-**Recommendation**: Use UDP for same-network streaming (simpler, lower latency).
-
 ### Encoding Settings
 
 - **libx264**: H.264 video encoder (widely compatible)
@@ -55,29 +42,10 @@ Linux audio system. The Ripsaw HD's audio appears as a capture device like `hw:2
 
 ## OBS Setup (Receiving Machine)
 
-### For UDP Stream
-
 1. Add Source → **Media Source**
 2. Uncheck "Local File"
 3. Input: `udp://@:5000`
 4. Check "Restart playback when source becomes active"
-
-### For RTMP Stream
-
-First, install an RTMP server on the OBS machine:
-
-**Windows**: Use [nginx-rtmp-win32](https://github.com/nicedaysola/nginx-rtmp-win32/releases)
-
-**Linux/Mac**:
-```bash
-# Using Docker (easiest)
-docker run -p 1935:1935 tiangolo/nginx-rtmp
-```
-
-Then in OBS:
-1. Add Source → **Media Source**
-2. Uncheck "Local File"
-3. Input: `rtmp://localhost/live/stream`
 
 ## Finding Your Devices
 
@@ -113,13 +81,12 @@ Another program is using the capture card. Close OBS/VLC on this machine.
 - Ensure audio is coming through the HDMI/source
 
 ### High latency
-- Use UDP instead of RTMP
-- Lower resolution: `make stream-udp RESOLUTION=1280x720`
+- Lower resolution: `make stream RESOLUTION=1280x720`
 - Ensure both machines are on same network (not through internet)
 
 ### Choppy video
-- Reduce bitrate: `make stream-udp VIDEO_BITRATE=3000k`
-- Lower framerate: `make stream-udp FRAMERATE=24`
+- Reduce bitrate: `make stream VIDEO_BITRATE=3000k`
+- Lower framerate: `make stream FRAMERATE=24`
 
 ## Raspberry Pi Setup Guide
 
@@ -316,7 +283,7 @@ Find the IP address of the computer running OBS:
 
 Start the stream from the Pi:
 ```bash
-make stream-udp TARGET_IP=192.168.1.100
+make stream TARGET_IP=192.168.1.100
 # Replace with your OBS computer's IP
 ```
 
@@ -332,7 +299,7 @@ See the "OBS Setup" section above for configuring OBS to receive the stream.
 | Detect devices | `make detect` |
 | Test video | `make test-video` |
 | Test audio | `make test-audio` |
-| Start UDP stream | `make stream-udp TARGET_IP=<ip>` |
+| Start UDP stream | `make stream TARGET_IP=<ip>` |
 | Stop stream | `Ctrl+C` |
 | Check Pi IP | `hostname -I` |
 | Reboot Pi | `sudo reboot` |
@@ -392,7 +359,7 @@ sudo apt install ffmpeg v4l-utils alsa-utils
 - Has two USB 3.0 ports (blue) - use these for the Ripsaw HD
 - Can handle 1080p60 with higher bitrates:
   ```bash
-  make stream-udp RESOLUTION=1920x1080 FRAMERATE=60 VIDEO_BITRATE=8000k
+  make stream RESOLUTION=1920x1080 FRAMERATE=60 VIDEO_BITRATE=8000k
   ```
 - Runs cooler than Pi 4 but active cooling still recommended for sustained streaming
 - PCIe slot available for NVMe SSD (not needed for streaming, but useful for recording)
@@ -400,14 +367,14 @@ sudo apt install ffmpeg v4l-utils alsa-utils
 **Raspberry Pi 4 Settings:**
 ```bash
 # 1080p30 (default, works well)
-make stream-udp TARGET_IP=192.168.1.100
+make stream TARGET_IP=192.168.1.100
 
 # If experiencing issues, drop to 720p
-make stream-udp RESOLUTION=1280x720 VIDEO_BITRATE=2500k
+make stream RESOLUTION=1280x720 VIDEO_BITRATE=2500k
 ```
 
 **Raspberry Pi 3 Settings:**
 ```bash
 # Use 720p with lower bitrate
-make stream-udp RESOLUTION=1280x720 VIDEO_BITRATE=2000k FRAMERATE=24
+make stream RESOLUTION=1280x720 VIDEO_BITRATE=2000k FRAMERATE=24
 ```

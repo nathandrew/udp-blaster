@@ -24,9 +24,8 @@ PI_HOSTNAME ?= churchpi
 # Network to scan (for find-pi fallback)
 NETWORK_SCAN ?= 192.168.1.0/24
 
-# Streaming ports
+# Streaming port
 UDP_PORT ?= 5000
-RTMP_PORT ?= 1935
 
 # Video settings
 RESOLUTION ?= 1920x1080
@@ -41,7 +40,7 @@ AUDIO_RATE ?= 48000
 # STREAMING TARGETS
 # ============================================================================
 
-.PHONY: help setup detect find-pi my-ip ssh-pi test-video test-audio test-receive stream-udp stream-rtmp stop
+.PHONY: help setup detect find-pi my-ip ssh-pi test-video test-audio test-receive stream stop
 
 help:
 	@echo "Church Video Streaming Commands"
@@ -58,8 +57,7 @@ help:
 	@echo "  make test-receive - Open VLC to receive stream (run on OBS machine)"
 	@echo ""
 	@echo "Streaming:"
-	@echo "  make stream-udp  - Stream via UDP (low latency)"
-	@echo "  make stream-rtmp - Stream via RTMP (more reliable)"
+	@echo "  make stream      - Start streaming to OBS"
 	@echo "  make stop        - Stop any running streams"
 	@echo ""
 	@echo "Current Configuration:"
@@ -96,7 +94,7 @@ my-ip:
 	@ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '^127\.' | head -1 || echo "No network connection found"
 	@echo ""
 	@echo "Tell the streaming machine to use:"
-	@echo "  make stream-udp TARGET_IP=$$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '^127\.' | head -1)"
+	@echo "  make stream TARGET_IP=$$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '^127\.' | head -1)"
 
 # SSH into the Pi
 ssh-pi:
@@ -129,18 +127,18 @@ test-audio:
 # Receive and display UDP stream (run on receiving machine to test)
 test-receive:
 	@echo "Opening VLC to receive UDP stream on port $(UDP_PORT)..."
-	@echo "Run 'make stream-udp' on the Pi first!"
+	@echo "Run 'make stream' on the streaming machine first!"
 	@echo ""
 	vlc udp://@:$(UDP_PORT)
 
 # ============================================================================
-# UDP STREAMING (Recommended - Lower latency)
+# STREAMING
 # ============================================================================
 # OBS receives via Media Source with input: udp://@:5000
 # ============================================================================
 
-stream-udp:
-	@echo "Starting UDP stream to $(TARGET_IP):$(UDP_PORT)"
+stream:
+	@echo "Starting stream to $(TARGET_IP):$(UDP_PORT)"
 	@echo "In OBS: Add Media Source -> uncheck 'Local File' -> input: udp://@:$(UDP_PORT)"
 	@echo "Press Ctrl+C to stop"
 	@echo ""
@@ -150,26 +148,6 @@ stream-udp:
 		-c:v libx264 -preset ultrafast -tune zerolatency -b:v $(VIDEO_BITRATE) \
 		-c:a aac -b:a $(AUDIO_BITRATE) -ar $(AUDIO_RATE) \
 		-f mpegts "udp://$(TARGET_IP):$(UDP_PORT)?pkt_size=1316"
-
-# ============================================================================
-# RTMP STREAMING (Alternative - More reliable, higher latency)
-# ============================================================================
-# Requires RTMP server on target. OBS receives via Media Source with
-# input: rtmp://localhost/live/stream
-# ============================================================================
-
-stream-rtmp:
-	@echo "Starting RTMP stream to rtmp://$(TARGET_IP):$(RTMP_PORT)/live/stream"
-	@echo "Target must be running an RTMP server (see README)"
-	@echo "In OBS: Add Media Source -> input: rtmp://localhost/live/stream"
-	@echo "Press Ctrl+C to stop"
-	@echo ""
-	ffmpeg \
-		-f v4l2 -framerate $(FRAMERATE) -video_size $(RESOLUTION) -i $(VIDEO_DEV) \
-		-f alsa -i $(AUDIO_DEV) \
-		-c:v libx264 -preset ultrafast -tune zerolatency -b:v $(VIDEO_BITRATE) \
-		-c:a aac -b:a $(AUDIO_BITRATE) -ar $(AUDIO_RATE) \
-		-f flv "rtmp://$(TARGET_IP):$(RTMP_PORT)/live/stream"
 
 # Stop any running ffmpeg streams
 stop:
