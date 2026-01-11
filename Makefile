@@ -4,17 +4,25 @@
 # Run 'make help' to see available commands
 
 # ============================================================================
-# CONFIGURATION - Edit these values for your setup
+# CONFIGURATION - Load saved config if exists, otherwise use defaults
 # ============================================================================
+
+-include .config.mk
 
 # Video capture device (run 'make detect' to find yours)
 VIDEO_DEV ?= /dev/video0
 
 # Audio capture device (run 'make detect' to find yours)
-AUDIO_DEV ?= hw:2,0
+AUDIO_DEV ?= hw:0,0
 
 # Target machine IP (where OBS is running)
 TARGET_IP ?= 192.168.1.100
+
+# Raspberry Pi hostname (for find-pi command)
+PI_HOSTNAME ?= churchpi
+
+# Network to scan (for find-pi fallback)
+NETWORK_SCAN ?= 192.168.1.0/24
 
 # Streaming ports
 UDP_PORT ?= 5000
@@ -33,28 +41,58 @@ AUDIO_RATE ?= 48000
 # STREAMING TARGETS
 # ============================================================================
 
-.PHONY: help detect test-video test-audio stream-udp stream-rtmp stop
+.PHONY: help setup detect find-pi ssh-pi test-video test-audio test-receive stream-udp stream-rtmp stop
 
 help:
 	@echo "Church Video Streaming Commands"
 	@echo "================================"
 	@echo ""
 	@echo "Setup & Testing:"
+	@echo "  make setup       - Interactive setup (select devices, save config)"
+	@echo "  make find-pi     - Find Raspberry Pi on network"
+	@echo "  make ssh-pi      - SSH into the Pi"
 	@echo "  make detect      - Detect video/audio devices"
 	@echo "  make test-video  - Preview video locally (no streaming)"
 	@echo "  make test-audio  - Test audio levels"
+	@echo "  make test-receive - Open VLC to receive stream (run on OBS machine)"
 	@echo ""
 	@echo "Streaming:"
 	@echo "  make stream-udp  - Stream via UDP (low latency)"
 	@echo "  make stream-rtmp - Stream via RTMP (more reliable)"
 	@echo "  make stop        - Stop any running streams"
 	@echo ""
-	@echo "Configuration:"
+	@echo "Current Configuration:"
+	@echo "  PI_HOSTNAME=$(PI_HOSTNAME)"
 	@echo "  TARGET_IP=$(TARGET_IP)  (OBS machine)"
 	@echo "  VIDEO_DEV=$(VIDEO_DEV)"
 	@echo "  AUDIO_DEV=$(AUDIO_DEV)"
 	@echo ""
 	@echo "Override with: make stream-udp TARGET_IP=192.168.1.50"
+
+# ============================================================================
+# INTERACTIVE SETUP
+# ============================================================================
+
+setup:
+	@./setup.sh
+
+# ============================================================================
+# NETWORK / PI DISCOVERY
+# ============================================================================
+
+# Find the Raspberry Pi on the network
+find-pi:
+	@echo "=== Looking for $(PI_HOSTNAME).local ==="
+	@ping -c 1 -W 2 $(PI_HOSTNAME).local 2>/dev/null && echo "Found via mDNS!" || \
+	(echo "mDNS lookup failed, scanning network $(NETWORK_SCAN)..." && \
+	echo "This may take 10-30 seconds..." && \
+	nmap -sn $(NETWORK_SCAN) 2>/dev/null | grep -B2 -i "raspberry\|$(PI_HOSTNAME)" || \
+	echo "No Raspberry Pi found. Check: 1) Pi is powered on 2) Connected to same network 3) Try different NETWORK_SCAN range")
+
+# SSH into the Pi
+ssh-pi:
+	@echo "Connecting to $(PI_HOSTNAME).local..."
+	ssh $(PI_HOSTNAME).local
 
 # Detect available devices
 detect:
@@ -78,6 +116,13 @@ test-audio:
 	@echo "You should see meter movement when there's sound"
 	ffmpeg -f alsa -i $(AUDIO_DEV) -af "volumedetect" -f null - 2>&1 | grep -E "mean_volume|max_volume" || \
 		arecord -D $(AUDIO_DEV) -vvv -f cd /dev/null
+
+# Receive and display UDP stream (run on receiving machine to test)
+test-receive:
+	@echo "Opening VLC to receive UDP stream on port $(UDP_PORT)..."
+	@echo "Run 'make stream-udp' on the Pi first!"
+	@echo ""
+	vlc udp://@:$(UDP_PORT)
 
 # ============================================================================
 # UDP STREAMING (Recommended - Lower latency)
