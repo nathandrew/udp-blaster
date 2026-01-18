@@ -10,7 +10,7 @@ echo ""
 
 # Get video devices (first /dev/videoX for each device)
 mapfile -t video_devices < <(v4l2-ctl --list-devices 2>/dev/null | grep -E "^\s+/dev/video[0-9]+$" | awk 'NR % 2 == 1' | tr -d '\t')
-mapfile -t video_names < <(v4l2-ctl --list-devices 2>/dev/null | grep -v "^\s" | sed 's/(.*//')
+mapfile -t video_names < <(v4l2-ctl --list-devices 2>/dev/null | grep -v "^\s" | sed 's/(.*//' | grep -v '^[[:space:]]*$')
 
 if [ ${#video_devices[@]} -eq 0 ]; then
     echo "No video devices found. Is v4l-utils installed?"
