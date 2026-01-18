@@ -40,6 +40,27 @@ make test-video
 make stream
 ```
 
+## Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `make setup` | Interactive setup (select devices, save config) |
+| `make detect` | Detect video/audio devices |
+| `make find-pi` | Find Raspberry Pi on network |
+| `make my-ip` | Show this machine's IP address |
+| `make ssh-pi` | SSH into the Pi |
+| `make test-video` | Preview video locally (no streaming) |
+| `make test-audio` | Test audio levels |
+| `make test-receive` | Open VLC to receive stream (run on OBS machine) |
+| `make stream` | Start streaming to OBS |
+| `make stop` | Stop any running streams |
+
+**Override settings inline:**
+```bash
+make stream TARGET_IP=192.168.1.50
+make stream RESOLUTION=1280x720 VIDEO_BITRATE=3000k
+```
+
 ## Technology Overview
 
 ### FFmpeg
