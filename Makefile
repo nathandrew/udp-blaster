@@ -1,4 +1,4 @@
-# Church Video Streaming - Razer Ripsaw HD to OBS via network
+# UDP Blaster - Razer Ripsaw HD to OBS via network
 #
 # Usage: make <target>
 # Run 'make help' to see available commands
@@ -43,8 +43,8 @@ AUDIO_RATE ?= 48000
 .PHONY: help setup detect find-pi my-ip ssh-pi test-video test-audio test-receive stream stop
 
 help:
-	@echo "Church Video Streaming Commands"
-	@echo "================================"
+	@echo "UDP Blaster Commands"
+	@echo "===================="
 	@echo ""
 	@echo "Setup & Testing:"
 	@echo "  make setup       - Interactive setup (select devices, save config)"

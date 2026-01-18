@@ -1,6 +1,24 @@
-# Church Video Streaming Setup
+# UDP Blaster
 
-Stream video/audio from Razer Ripsaw HD to another device running OBS.
+```
+                                        ┌───┬───┬───┬───┬───┐
+                                        │ ▶ │ ▶ │ ▶ │ ▶ │ ▶ │
+            _____________               ├───┼───┼───┼───┼───┤
+           /             \              │ ▶ │ ▶ │ ▶ │ ▶ │ ▶ │
+    ┌─────┬───────────────┬─===========─┴───┴───┴───┴───┴───┘
+    │ UDP │░░░░░░░░░░░░░░░│>
+    └─────┴───────────────┴─===========─┬───┬───┬───┬───┬───┐
+           \_____________/              │ ▶ │ ▶ │ ▶ │ ▶ │ ▶ │
+                  │                     ├───┼───┼───┼───┼───┤
+                  │                     │ ▶ │ ▶ │ ▶ │ ▶ │ ▶ │
+                 ╱╲                     └───┴───┴───┴───┴───┘
+
+         ╦ ╦ ╔╦╗ ╔═╗   ╔╗  ╦  ╔═╗ ╔═╗ ╔╦╗ ╔═╗ ╦═╗
+         ║ ║  ║║ ╠═╝   ╠╩╗ ║  ╠═╣ ╚═╗  ║  ║╣  ╠╦╝
+         ╚═╝ ═╩╝ ╩     ╚═╝ ╩═╝╩ ╩ ╚═╝  ╩  ╚═╝ ╩╚═
+```
+
+Stream video/audio from Razer Ripsaw HD to another device running OBS via UDP.
 
 ## Architecture
 
@@ -90,7 +108,7 @@ Another program is using the capture card. Close OBS/VLC on this machine.
 
 ## Raspberry Pi Setup Guide
 
-Complete guide for setting up a headless Raspberry Pi (no monitor needed) for church video streaming.
+Complete guide for setting up a headless Raspberry Pi (no monitor needed) for UDP streaming.
 
 ---
 
@@ -219,14 +237,14 @@ ssh pi@churchpi.local
 
 **Option A - Clone from Git:**
 ```bash
-git clone https://github.com/YOUR_USERNAME/church-video.git
-cd church-video
+git clone https://github.com/YOUR_USERNAME/udp-blaster.git
+cd udp-blaster
 ```
 
 **Option B - Copy from your computer:**
 ```bash
 # Run this FROM your laptop (not the Pi)
-scp -r /path/to/church-video pi@churchpi.local:~/
+scp -r /path/to/udp-blaster pi@churchpi.local:~/
 ```
 
 ---
@@ -238,7 +256,7 @@ scp -r /path/to/church-video pi@churchpi.local:~/
 3. Detect the devices:
 
 ```bash
-cd ~/church-video
+cd ~/udp-blaster
 make detect
 ```
 
