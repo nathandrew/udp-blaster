@@ -91,10 +91,10 @@ find-pi:
 # Show this machine's IP address
 my-ip:
 	@echo "=== Your IP Address ==="
-	@ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '^127\.' | head -1 || echo "No network connection found"
+	@ip -4 addr show dev $$(ip route show default | awk '{print $$5}' | head -1) | grep -oP '(?<=inet\s)\d+(\.\d+){3}' || echo "No network connection found"
 	@echo ""
 	@echo "Tell the streaming machine to use:"
-	@echo "  make stream TARGET_IP=$$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '^127\.' | head -1)"
+	@echo "  make stream TARGET_IP=$$(ip -4 addr show dev $$(ip route show default | awk '{print $$5}' | head -1) | grep -oP '(?<=inet\s)\d+(\.\d+){3}')"
 
 # SSH into the Pi
 ssh-pi:
