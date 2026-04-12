@@ -10,7 +10,17 @@
       "Bash(pw-link \"obs-to-zoom:monitor_FL\" \"obs-to-zoom-source:input_FL\")",
       "Bash(pw-link \"obs-to-zoom:monitor_FR\" \"obs-to-zoom-source:input_FR\")",
       "Bash(pw-link OBS:monitor_FL obs-to-zoom-source:input_FL)",
-      "Bash(pw-link OBS:monitor_FR obs-to-zoom-source:input_FR)"
+      "Bash(pw-link OBS:monitor_FR obs-to-zoom-source:input_FR)",
+      "Bash(make -n virtual-start virtual-verify virtual-status obs-to-zoom)",
+      "Bash(make -n detect test-video test-audio stream stop virtual-check virtual-install virtual-start virtual-stop virtual-status virtual-verify obs-to-zoom)",
+      "Bash(echo \"---EXIT $?---\")",
+      "Bash(make -p)",
+      "Bash(make -n PLATFORM=mac VIDEO_DEV=0 AUDIO_DEV=1 detect test-video test-audio stream stop virtual-check virtual-install virtual-start virtual-stop virtual-status virtual-verify obs-to-zoom)",
+      "Bash(bash -n /home/nathandrew/Documents/nathandrew/udp-blaster/setup.sh)",
+      "Bash(wc -l README.md docs/*.md)",
+      "Bash(make help:*)",
+      "Bash(make -n stream stop virtual-start virtual-verify)",
+      "Bash(echo \"EXIT $?\")"
     ]
   }
 }
