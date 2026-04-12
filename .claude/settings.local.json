@@ -1,7 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Bash(pactl list sources:*)"
+      "Bash(pactl list sources:*)",
+      "Bash(pactl list:*)",
+      "Bash(pw-link -l)",
+      "Bash(pw-link -o)",
+      "Bash(pw-link -i)",
+      "Bash(pactl load-module:*)",
+      "Bash(pw-link \"obs-to-zoom:monitor_FL\" \"obs-to-zoom-source:input_FL\")",
+      "Bash(pw-link \"obs-to-zoom:monitor_FR\" \"obs-to-zoom-source:input_FR\")",
+      "Bash(pw-link OBS:monitor_FL obs-to-zoom-source:input_FL)",
+      "Bash(pw-link OBS:monitor_FR obs-to-zoom-source:input_FR)"
     ]
   }
 }

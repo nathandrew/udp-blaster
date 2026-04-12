@@ -54,6 +54,12 @@ make stream
 | `make test-receive` | Open VLC to receive stream (run on OBS machine) |
 | `make stream` | Start streaming to OBS |
 | `make stop` | Stop any running streams |
+| `make virtual-check` | Check if virtual camera/audio dependencies are installed |
+| `make virtual-install` | Install virtual device dependencies (Arch/Debian) |
+| `make virtual-start` | Load virtual camera + create virtual audio sink |
+| `make virtual-stop` | Unload virtual camera + remove virtual audio sink |
+| `make virtual-status` | Show status of virtual devices |
+| `make test-stream` | Send ffmpeg test pattern over UDP to localhost |
 
 **Override settings inline:**
 ```bash
@@ -258,7 +264,7 @@ ssh pi@churchpi.local
 
 **Option A - Clone from Git:**
 ```bash
-git clone https://github.com/YOUR_USERNAME/udp-blaster.git
+git clone https://github.com/nathandrew/udp-blaster.git
 cd udp-blaster
 ```
 
@@ -369,6 +375,221 @@ network={
 }
 EOF
 ```
+
+## OBS to Zoom (Virtual Camera & Microphone)
+
+Once OBS is receiving the UDP stream, you need virtual devices so Zoom can use OBS's output as a camera and microphone.
+
+```
+[UDP Stream] → [OBS Studio] → [Virtual Camera] → [Zoom Video Source]
+                             → [Virtual Audio]  → [Zoom Microphone]
+```
+
+### Virtual Camera (v4l2loopback)
+
+OBS has a built-in "Start Virtual Camera" feature on Linux, but it requires the `v4l2loopback` kernel module.
+
+**Arch Linux:**
+```bash
+sudo pacman -S v4l2loopback-dkms linux-headers
+```
+
+**Debian/Ubuntu:**
+```bash
+sudo apt install v4l2loopback-dkms v4l2loopback-utils linux-headers-$(uname -r)
+```
+
+**Load the module:**
+```bash
+sudo modprobe v4l2loopback devices=1 video_nr=10 card_label="OBS Virtual Camera" exclusive_caps=1
+```
+
+> `exclusive_caps=1` is required for Zoom and Chrome to detect the device.
+
+**Make it persistent across reboots:**
+```bash
+# Create module config
+echo "v4l2loopback" | sudo tee /etc/modules-load.d/v4l2loopback.conf
+
+# Set options
+echo 'options v4l2loopback devices=1 video_nr=10 card_label="OBS Virtual Camera" exclusive_caps=1' | sudo tee /etc/modprobe.d/v4l2loopback.conf
+```
+
+**Verify it's working:**
+```bash
+v4l2-ctl --list-devices
+# Should show "OBS Virtual Camera" at /dev/video10
+```
+
+**In OBS:**
+1. Click **Start Virtual Camera** in the bottom-right controls
+2. The virtual camera is now broadcasting whatever OBS is showing
+
+**In Zoom:**
+1. Go to **Settings → Video**
+2. Select **OBS Virtual Camera** from the camera dropdown
+3. You should see your OBS output as the Zoom video
+
+### Virtual Microphone (PipeWire / PulseAudio)
+
+To route OBS audio output into Zoom as a microphone input, you create a virtual audio sink and monitor it.
+
+#### Option A: PipeWire (modern Linux - Arch, Fedora, Ubuntu 22.04+)
+
+Most modern distros use PipeWire. Check with:
+```bash
+pactl info | grep "Server Name"
+# Should show "PulseAudio (on PipeWire)" if using PipeWire
+```
+
+**Create a virtual sink:**
+```bash
+# Create a virtual sink that OBS will output to
+pactl load-module module-null-sink media.class=Audio/Sink sink_name=obs-to-zoom channel_map=stereo
+pactl load-module module-null-sink media.class=Audio/Source/Virtual sink_name=obs-to-zoom-source channel_map=stereo
+```
+
+> The above creates both a sink (for OBS to send audio to) and a virtual source (for Zoom to read from).
+
+**Wire them together using `pw-link`:**
+```bash
+# List available ports
+pw-link -o  # outputs
+pw-link -i  # inputs
+
+# Connect the null sink monitor to the virtual source
+pw-link "obs-to-zoom:monitor_FL" "obs-to-zoom-source:input_FL"
+pw-link "obs-to-zoom:monitor_FR" "obs-to-zoom-source:input_FR"
+```
+
+**Simpler alternative — use `qpwgraph` (GUI):**
+```bash
+sudo pacman -S qpwgraph   # Arch
+sudo apt install qpwgraph  # Debian/Ubuntu
+qpwgraph &
+```
+Then visually drag connections from OBS output to the virtual source input.
+
+**In OBS:**
+1. Go to **Settings → Audio → Advanced**
+2. Set **Monitoring Device** to **obs-to-zoom** (the null sink)
+3. In the Audio Mixer, click the gear icon on your audio source
+4. Select **Advanced Audio Properties**
+5. Set **Audio Monitoring** to **Monitor and Output** for the sources you want Zoom to hear
+
+**In Zoom:**
+1. Go to **Settings → Audio**
+2. Select **obs-to-zoom-source** (or "Null Output") as the **Microphone**
+3. Test that audio levels show up in the Zoom mic meter
+
+#### Option B: PulseAudio (older systems)
+
+```bash
+# Create virtual sink
+pactl load-module module-null-sink sink_name=obs-to-zoom sink_properties=device.description="OBS-to-Zoom"
+
+# The monitor of this sink becomes a microphone source
+# It will appear as "Monitor of OBS-to-Zoom" in Zoom's mic list
+```
+
+**In OBS:** Same as PipeWire steps above — set Monitoring Device to the null sink.
+
+**In Zoom:** Select **Monitor of OBS-to-Zoom** as the microphone.
+
+#### Make virtual audio persistent
+
+Add to your shell startup or create a script:
+```bash
+#!/bin/bash
+# save as ~/obs-zoom-audio.sh
+pactl load-module module-null-sink media.class=Audio/Sink sink_name=obs-to-zoom channel_map=stereo
+pactl load-module module-null-sink media.class=Audio/Source/Virtual sink_name=obs-to-zoom-source channel_map=stereo
+pw-link "obs-to-zoom:monitor_FL" "obs-to-zoom-source:input_FL"
+pw-link "obs-to-zoom:monitor_FR" "obs-to-zoom-source:input_FR"
+echo "Virtual audio devices created and linked"
+```
+
+### Quick Checklist: OBS → Zoom
+
+| Step | Action |
+|------|--------|
+| 1 | Install v4l2loopback and load the module |
+| 2 | Create virtual audio sink (PipeWire or PulseAudio) |
+| 3 | In OBS: Start Virtual Camera |
+| 4 | In OBS: Set Monitoring Device to the virtual sink |
+| 5 | In OBS: Set audio sources to "Monitor and Output" |
+| 6 | In Zoom: Select "OBS Virtual Camera" for video |
+| 7 | In Zoom: Select virtual source for microphone |
+| 8 | Test both video and audio in Zoom settings before the call |
+
+---
+
+## Testing Locally Without a UDP Stream
+
+When you don't have a Ripsaw HD or UDP stream available, you can still test the full OBS → Zoom pipeline using sample media.
+
+### Option 1: Play a Sample Video in OBS
+
+1. Download a sample video (or use any video file you have):
+   ```bash
+   # Download Big Buck Bunny (open-source test video, 720p, ~60MB)
+   wget -O ~/sample-video.mp4 "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_1MB.mp4"
+
+   # Or use ffmpeg to generate a test pattern with audio (no download needed)
+   ffmpeg -f lavfi -i testsrc2=size=1920x1080:rate=30 \
+          -f lavfi -i sine=frequency=440:sample_rate=48000 \
+          -t 60 -c:v libx264 -c:a aac ~/test-pattern.mp4
+   ```
+
+2. In OBS, add a **Media Source**:
+   - Click **+** under Sources → **Media Source**
+   - Check **Local File**
+   - Browse to your video file
+   - Check **Loop** to keep it playing continuously
+
+3. Start the Virtual Camera and test in Zoom as described above.
+
+### Option 2: Use a VLC Window Capture
+
+1. Open any video in VLC
+2. In OBS, add a **Window Capture** source
+3. Select the VLC window
+4. This captures whatever VLC is playing
+
+### Option 3: Screen/Window Capture
+
+If you just want to verify the OBS → Zoom pipeline works:
+
+1. In OBS, add a **Screen Capture** or **Window Capture** source
+2. This captures your desktop — useful for quick testing
+3. Start Virtual Camera and verify it shows up in Zoom
+
+### Option 4: Simulate a UDP Stream Locally
+
+Send a test pattern over UDP to OBS on the same machine:
+```bash
+# Terminal 1: Send a test stream to localhost
+ffmpeg -re \
+    -f lavfi -i testsrc2=size=1920x1080:rate=30 \
+    -f lavfi -i sine=frequency=440:sample_rate=48000 \
+    -c:v libx264 -preset ultrafast -tune zerolatency -b:v 4500k \
+    -c:a aac -b:a 192k -ar 48000 \
+    -f mpegts "udp://127.0.0.1:5000?pkt_size=1316"
+```
+
+Then in OBS:
+1. Add **Media Source** → uncheck "Local File" → input: `udp://@:5000`
+2. This simulates the exact same setup as receiving from the Pi/streaming machine
+
+> This is the best way to test the full pipeline end-to-end without any hardware.
+
+### Option 5: Use Your Webcam as a Placeholder
+
+1. In OBS, add a **Video Capture Device** source
+2. Select your built-in webcam
+3. This acts as a stand-in for the Ripsaw HD input
+
+---
 
 ## Dependencies
 
